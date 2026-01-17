@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/alpinejs" defer></script>
+</head>
+<body>
+    <div x-data>
+    <template x-for="category in $store.categories.items" :key="category">
+      <button 
+        @click="$store.categories.current = category"
+        :class="{ 'font-bold': $store.categories.current === category }"
+        x-text="category">
+      </button>
+    </template>
+  </div>
+
+    <div x-data="taskManager">
+        <input x-model="newTask" placeholder="texte">
+        
+        <!-- SELECT des catégories -->
+        <select x-model="newCategory">
+            <template x-for="category in $store.categories.newCategoryPossible">
+                <option x-text="category"></option>
+            </template>
+        </select>
+
+        <button @click="addTask">Ajouter tache</button>
+
+        <ul>
+        <template x-for="(task, index) in tasks" :key="index">
+            <li x-show="$store.categories.current === 'all' || task.category === $store.categories.current">
+            <span x-text="task.text"></span>
+            (<span x-text="task.category"></span>)
+            <button @click="removeTask(index)">X</button>
+            </li>
+        </template>
+        </ul>
+    </div>
+    
+    <script>
+        document.addEventListener('alpine:init', () => {
+
+            Alpine.store('categories', {
+                current: 'all',
+                items: ['all', 'travail', 'perso'],
+                get newCategoryPossible() {
+                    return this.items.filter(i => i !== 'all')
+                }
+            })
+
+            Alpine.data('taskManager', () => ({
+                tasks: [],
+                newTask : '',
+                newCategory : Alpine.store('categories').newCategoryPossible[0],
+                addTask() {
+                    this.tasks.push({ 
+                        text : this.newTask, 
+                        category : this.newCategory
+                    })
+                    this.newTask = ''
+                    this.newCategory = Alpine.store('categories').newCategoryPossible[0]
+                },
+                removeTask(index) {
+                    this.tasks.splice(index, 1)
+                }
+            }))
+        })
+    </script>
+</body>
+</html>
