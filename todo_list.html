@@ -1,72 +1,100 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/alpinejs" defer></script>
-</head>
-<body>
+    <title>Todo List</title>
+  </head>
+  <body>
     <div x-data>
-    <template x-for="category in $store.categories.items" :key="category">
-      <button 
-        @click="$store.categories.current = category"
-        :class="{ 'font-bold': $store.categories.current === category }"
-        x-text="category">
-      </button>
-    </template>
-  </div>
+      <template x-for="category in $store.categories.category" :key="category">
+        <button @click="$store.categories.current = category" :class="{ 'font-bold': $store.categories.current === category }" x-text="category"></button>
+      </template>
+    </div>
 
     <div x-data="taskManager">
-        <input x-model="newTask" placeholder="texte">
-        
-        <!-- SELECT des catégories -->
-        <select x-model="newCategory">
-            <template x-for="category in $store.categories.newCategoryPossible">
-                <option x-text="category"></option>
-            </template>
-        </select>
+      <input x-model="newTask" placeholder="texte" />
 
-        <button @click="addTask">Ajouter tache</button>
+      <select x-model="newCategory" x-ref="categorySelect">
+        <option value="">+ Add category</option>
+        <template x-for="category in $store.categories.newCategoryPossible">
+          <option :value="category" x-text="category"></option>
+        </template>
+      </select>
 
-        <ul>
+      <div x-show="newCategory == ''" x-transition>
+        <input x-model="newCategoryName" placeholder="New category" @keydown.enter.prevent="addCategory" />
+      </div>
+
+      <button @click="addTask" :disabled="!newTask || newCategory === ''">Ajouter tache</button>
+
+      <ul>
         <template x-for="(task, index) in tasks" :key="index">
-            <li x-show="$store.categories.current === 'all' || task.category === $store.categories.current">
+          <li x-show="$store.categories.current === 'all' || task.category === $store.categories.current">
             <span x-text="task.text"></span>
             (<span x-text="task.category"></span>)
             <button @click="removeTask(index)">X</button>
-            </li>
+          </li>
         </template>
-        </ul>
+      </ul>
     </div>
-    
+
     <script>
-        document.addEventListener('alpine:init', () => {
+      document.addEventListener("alpine:init", () => {
+        Alpine.store("categories", {
+          current: "all",
+          category: ["all"],
+          get newCategoryPossible() {
+            return this.category.filter((i) => i !== "all");
+          },
+        });
 
-            Alpine.store('categories', {
-                current: 'all',
-                items: ['all', 'travail', 'perso'],
-                get newCategoryPossible() {
-                    return this.items.filter(i => i !== 'all')
-                }
-            })
+        Alpine.data("taskManager", () => ({
+          tasks: Alpine.$persist([]),
+          newTask: "",
+          newCategory: "",
+          newCategoryName: "",
 
-            Alpine.data('taskManager', () => ({
-                tasks: [],
-                newTask : '',
-                newCategory : Alpine.store('categories').newCategoryPossible[0],
-                addTask() {
-                    this.tasks.push({ 
-                        text : this.newTask, 
-                        category : this.newCategory
-                    })
-                    this.newTask = ''
-                    this.newCategory = Alpine.store('categories').newCategoryPossible[0]
-                },
-                removeTask(index) {
-                    this.tasks.splice(index, 1)
-                }
-            }))
-        })
+          init() {
+            const store = Alpine.store("categories");
+
+            this.tasks.forEach((task) => {
+              if (!store.category.includes(task.category)) {
+                store.category.push(task.category);
+              }
+            });
+
+            this.$nextTick(() => {
+              const firstReal = this.$refs.categorySelect.querySelector("option[value]:not([value=''])");
+              this.newCategory = firstReal ? firstReal.value : "";
+            });
+          },
+
+
+          addTask() {
+            this.tasks.push({
+              text: this.newTask,
+              category: this.newCategory,
+            });
+            this.newTask = "";
+            this.newCategory = Alpine.store("categories").newCategoryPossible[0];
+          },
+
+          removeTask(index) {
+            this.tasks.splice(index, 1);
+          },
+
+          addCategory() {
+            if (!this.newCategoryName.trim()) return;
+
+            Alpine.store("categories").category.push(this.newCategoryName);
+            this.newCategory = this.newCategoryName;
+            this.newCategoryName = "";
+          },
+        }));
+      });
     </script>
-</body>
+  </body>
 </html>
