@@ -20,7 +20,7 @@
       <select x-model="newCategory" x-ref="categorySelect">
         <option value="">+ Add category</option>
         <template x-for="category in $store.categories.newCategoryPossible">
-          <option :value="category" x-text="category"></option>
+          <option :value="category" x-text="category" :selected="category === $store.categories.newCategoryPossible[0]"></option>
         </template>
       </select>
 
@@ -28,17 +28,33 @@
         <input x-model="newCategoryName" placeholder="New category" @keydown.enter.prevent="addCategory" />
       </div>
 
+      <select x-model="newStatus">
+        <template x-for="status in statuses">
+          <option :value="status" x-text="status"></option>
+        </template>
+      </select>
+
       <button @click="addTask" :disabled="!newTask || newCategory === ''">Ajouter tache</button>
 
-      <ul>
-        <template x-for="(task, index) in tasks" :key="index">
-          <li x-show="$store.categories.current === 'all' || task.category === $store.categories.current">
-            <span x-text="task.text"></span>
-            (<span x-text="task.category"></span>)
-            <button @click="removeTask(index)">X</button>
-          </li>
-        </template>
-      </ul>
+      <template x-for="status in statuses">
+        <div>
+          <h2 x-text="status"></h2>
+          <ul>
+            <template x-for="(task, index) in tasks" :key="index">
+              <li x-show="($store.categories.current === 'all' || task.category === $store.categories.current) && task.status === status">
+                <span x-text="task.text"></span>
+                (<span x-text="task.category"></span>)
+                <select x-model="task.status">
+                  <template x-for="s in statuses">
+                    <option :value="s" x-text="s" :selected="s === task.status"></option>
+                  </template>
+                </select>
+                <button @click="removeTask(index)">X</button>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
     </div>
 
     <script>
@@ -54,8 +70,10 @@
         Alpine.data("taskManager", () => ({
           tasks: Alpine.$persist([]),
           newTask: "",
-          newCategory: "",
+          newCategory: Alpine.store("categories").newCategoryPossible[0],
           newCategoryName: "",
+          newStatus: "À faire",
+          statuses: ["À faire", "En cours", "Terminé"],
 
           init() {
             const store = Alpine.store("categories");
@@ -65,21 +83,17 @@
                 store.category.push(task.category);
               }
             });
-
-            this.$nextTick(() => {
-              const firstReal = this.$refs.categorySelect.querySelector("option[value]:not([value=''])");
-              this.newCategory = firstReal ? firstReal.value : "";
-            });
           },
-
 
           addTask() {
             this.tasks.push({
               text: this.newTask,
               category: this.newCategory,
+              status: this.newStatus,
             });
             this.newTask = "";
             this.newCategory = Alpine.store("categories").newCategoryPossible[0];
+            this.newStatus = "À faire";
           },
 
           removeTask(index) {
