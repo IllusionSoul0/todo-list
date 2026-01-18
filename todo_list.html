@@ -39,8 +39,8 @@
       <button @click="addTask" :disabled="!newTitle || !newCategory">Ajouter tache</button>
 
       <template x-for="status in statuses" :key="status">
-        <div x-show="status === currentStatus || currentStatus === '' || editingIndex !== null" @click="currentStatus === status ? currentStatus = '' : currentStatus = status">
-          <h2><span x-text="status"></span> - <span x-text="getNumberOfTasksInStatus(status)"></span></h2>
+        <div x-show="status === currentStatus || currentStatus === '' || editingIndex !== null" >
+          <h2 @click="currentStatus === status ? currentStatus = '' : currentStatus = status"><span x-text="status"></span> - <span x-text="getNumberOfTasksInStatus(status)"></span></h2>
           <ul>
             <template x-for="(task, index) in tasks" :key="index">
               <li
@@ -135,6 +135,8 @@
           },
 
           removeTask(index) {
+            if (!window.confirm("Are you sure you want to delete this task?")) return;
+            console.log("Removing task at index:", index);
             this.tasks.splice(index, 1);
           },
 
