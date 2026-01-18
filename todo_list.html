@@ -12,6 +12,7 @@
       <template x-for="category in $store.categories.category" :key="category">
         <button @click="$store.categories.current = category" :class="{ 'font-bold': $store.categories.current === category }" x-text="category"></button>
       </template>
+      <input x-model="$store.search.query" placeholder="Search tasks..." />
     </div>
 
     <div x-data="taskManager">
@@ -37,12 +38,14 @@
 
       <button @click="addTask" :disabled="!newTitle || !newCategory">Ajouter tache</button>
 
-      <template x-for="status in statuses">
-        <div>
+      <template x-for="status in statuses" :key="status">
+        <div x-else="status === currentStatus || currentStatus === ''" @click="currentStatus === status ? currentStatus = '' : currentStatus = status">
           <h2 x-text="status"></h2>
           <ul>
             <template x-for="(task, index) in tasks" :key="index">
-              <li x-show="($store.categories.current === 'all' || task.category === $store.categories.current) && task.status === status">
+              <li
+                x-show="($store.categories.current === 'all' || task.category === $store.categories.current) && task.status === status && task.title.toLowerCase().includes($store.search.query.toLowerCase())"
+              >
                 <template x-if="editingIndex !== index">
                   <div>
                     <strong x-text="task.title"></strong>
@@ -53,9 +56,14 @@
                   <div>
                     <input x-model="task.title" placeholder="Titre" />
                     <textarea x-model="task.description" placeholder="Description"></textarea>
+                    <select x-model="task.category">
+                      <template x-for="category in $store.categories.newCategoryPossible">
+                        <option :value="category" x-text="category"></option>
+                      </template>
+                    </select>
                   </div>
                 </template>
-                (<span x-text="task.category"></span>)
+                <template x-if="editingIndex !== index"> (<span x-text="task.category"></span>) </template>
                 <select x-model="task.status">
                   <template x-for="s in statuses">
                     <option :value="s" x-text="s" :selected="s === task.status"></option>
@@ -83,6 +91,11 @@
           get newCategoryPossible() {
             return this.category.filter((i) => i !== "all");
           },
+          taskSearch: "",
+        });
+
+        Alpine.store("search", {
+          query: "",
         });
 
         Alpine.data("taskManager", () => ({
@@ -93,6 +106,7 @@
           newCategoryName: "",
           newStatus: "À faire",
           statuses: ["À faire", "En cours", "Terminé"],
+          currentStatus: "",
           editingIndex: null,
 
           init() {
