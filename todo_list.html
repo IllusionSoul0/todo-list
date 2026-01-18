@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
     <script src="https://unpkg.com/alpinejs" defer></script>
-    <title>Liste de Tâches</title>
+    <title>Todo-list</title>
   </head>
   <body>
+    <h1>Todo-list</h1>
+
+    <!-- Category and Search navigation -->
     <div x-data>
       <template x-for="category in $store.categories.category" :key="category">
         <button @click="$store.categories.current = category" :class="{ 'font-bold': $store.categories.current === category }" x-text="category"></button>
@@ -15,70 +18,97 @@
       <input x-model="$store.search.query" placeholder="Rechercher des tâches..." />
     </div>
 
+    <!-- Task-manager -->
     <div x-data="taskManager" class="task-manager">
       <input x-model="newTitle" placeholder="Titre" />
       <textarea x-model="newDescription" placeholder="Description"></textarea>
 
+      <!-- New task category management -->
       <select x-model="newCategory" x-ref="categorySelect">
         <option value="">+ Ajouter une catégorie</option>
         <template x-for="category in $store.categories.newCategoryPossible">
-          <option :value="category" x-text="category" :selected="category === newCategory"></option>
+          <option :value="category" x-text="'Catégorie : ' + category" :selected="category === newCategory"></option>
         </template>
       </select>
 
+      <!-- New Category -->
       <div x-show="newCategory == ''" x-transition>
         <input x-model="newCategoryName" placeholder="Nouvelle catégorie" @keydown.enter.prevent="addCategory" />
         <button @click="addCategory">Ajouter une Catégorie</button>
       </div>
 
+      <!-- Status and priority selection -->
       <select x-model="newStatus">
         <template x-for="status in statuses">
           <option :value="status" x-text="status"></option>
         </template>
       </select>
 
+      <select x-model="newPriority">
+        <template x-for="priority in priorities">
+          <option :value="priority" x-text="'Priorité: ' + priority" :selected="priority === 'Normale'"></option>
+        </template>
+      </select>
+
       <button @click="addTask" :disabled="!newTitle || !newCategory">Ajouter une Tâche</button>
 
+      <!-- Task Lists by Status -->
       <template x-for="status in statuses" :key="status">
         <div x-show="status === currentStatus || currentStatus === '' || editingIndex !== null" class="status-section">
-          <h2 @click="currentStatus === status ? currentStatus = '' : currentStatus = status">
-            <span x-text="status"></span> - <span x-text="getNumberOfTasksInStatus(status)"></span>
-          </h2>
+          <h2 @click="currentStatus === status ? currentStatus = '' : currentStatus = status"><span x-text="status"></span> - <span x-text="getNumberOfTasksInStatus(status)"></span></h2>
           <ul>
-            <template x-for="(task, index) in tasks" :key="index">
-              <li
-                x-show="($store.categories.current === 'all' || task.category === $store.categories.current) && task.status === status && task.title.toLowerCase().includes($store.search.query.toLowerCase())"
-              >
-                <template x-if="editingIndex !== index">
-                  <div>
-                    <strong x-text="task.title"></strong>
-                    <p x-text="task.description"></p>
-                  </div>
-                </template>
-                <template x-if="editingIndex === index">
-                  <div>
-                    <input x-model="task.title" placeholder="Titre" />
-                    <textarea x-model="task.description" placeholder="Description"></textarea>
-                    <select x-model="task.category">
-                      <template x-for="category in $store.categories.newCategoryPossible">
-                        <option :value="category" x-text="category"></option>
-                      </template>
-                    </select>
-                  </div>
-                </template>
-                <template x-if="editingIndex !== index"> (<span x-text="task.category"></span>) </template>
+            <!-- Card for task -->
+            <template
+              x-for="(task, index) in tasks.filter((t) => t.status === status).sort((a, b) => (['Haute', 'Normale', 'Basse'].indexOf(a.priority || 'Normale') - ['Haute', 'Normale', 'Basse'].indexOf(b.priority || 'Normale')))"
+              :key="index"
+            >
+              <li x-show="($store.categories.current === 'all' || task.category === $store.categories.current) && task.title.toLowerCase().includes($store.search.query.toLowerCase())">
+                <div style="display: flex; align-items: center; gap: 0.8rem">
+                  <span x-show="editingIndex !== tasks.indexOf(task)" class="priority-badge" :class="'priority-' + task.priority" x-text="task.priority"></span>
+                  <template x-if="editingIndex !== tasks.indexOf(task)">
+                    <div>
+                      <strong x-text="task.title"></strong>
+                      <p x-text="task.description"></p>
+                    </div>
+                  </template>
+
+                  <!-- Modification Mode -->
+                  <template x-if="editingIndex === tasks.indexOf(task)">
+                    <div>
+                      <input x-model="task.title" placeholder="Titre" />
+                      <textarea x-model="task.description" placeholder="Description"></textarea>
+                      <select x-model="task.category">
+                        <template x-for="category in $store.categories.newCategoryPossible">
+                          <option :value="category" x-text="category"></option>
+                        </template>
+                      </select>
+                      <select x-model="task.priority">
+                        <template x-for="priority in priorities">
+                          <option :value="priority" x-text="'Priorité: ' + priority" :selected="priority === task.priority"></option>
+                        </template>
+                      </select>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Change Status -->
+                <template x-if="editingIndex !== tasks.indexOf(task)"> (<span x-text="task.category"></span>) </template>
                 <select x-model="task.status">
                   <template x-for="s in statuses">
                     <option :value="s" x-text="s" :selected="s === task.status"></option>
                   </template>
                 </select>
-                <template x-if="editingIndex !== index">
-                  <button @click="editingIndex = index">Modifier</button>
-                </template>
-                <template x-if="editingIndex === index">
-                  <button @click="editingIndex = null">Sauvegarder</button>
-                </template>
-                <button @click="removeTask(index)">X</button>
+
+                <!-- Card buttons -->
+                <div style="display: flex; gap: 0.5rem">
+                  <template x-if="editingIndex !== tasks.indexOf(task)">
+                    <button @click="editingIndex = tasks.indexOf(task)">Modifier</button>
+                  </template>
+                  <template x-if="editingIndex === tasks.indexOf(task)">
+                    <button @click="editingIndex = null">Sauvegarder</button>
+                  </template>
+                  <button class="btn-delete" @click="removeTask(tasks.indexOf(task))">X</button>
+                </div>
               </li>
             </template>
           </ul>
@@ -108,7 +138,9 @@
           newCategory: "",
           newCategoryName: "",
           newStatus: "À faire",
+          newPriority: "Normale",
           statuses: ["À faire", "En cours", "Terminé"],
+          priorities: ["Haute", "Normale", "Basse"],
           currentStatus: "",
           editingIndex: null,
 
@@ -130,11 +162,13 @@
               description: this.newDescription,
               category: this.newCategory,
               status: this.newStatus,
+              priority: this.newPriority,
             });
             this.newTitle = "";
             this.newDescription = "";
             this.newCategory = Alpine.store("categories").newCategoryPossible[0];
             this.newStatus = "À faire";
+            this.newPriority = "Normale";
           },
 
           removeTask(index) {
@@ -153,6 +187,14 @@
 
           getNumberOfTasksInStatus(status) {
             return this.tasks.filter((task) => task.status === status).length;
+          },
+
+          getSortedTasks(status) {
+            const priorityOrder = { Haute: 1, Normale: 2, Basse: 3 };
+            return this.tasks
+              .map((task, index) => ({ ...task, originalIndex: index }))
+              .filter((task) => task.status === status)
+              .sort((a, b) => (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3));
           },
         }));
       });
@@ -175,6 +217,17 @@
         color: #f0e6d2;
         margin: 0;
         padding: 2rem;
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 2.5rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 2rem;
+        color: #c89b3c;
+        text-shadow: 0 0 20px rgba(200, 155, 60, 0.5);
+        font-weight: bold;
       }
 
       h2 {
@@ -376,6 +429,17 @@
         color: #1e2328;
       }
 
+      .btn-delete {
+        background: transparent !important;
+        color: #dc3545 !important;
+        border: 2px solid #dc3545 !important;
+      }
+
+      .btn-delete:hover {
+        background: #dc3545 !important;
+        color: #1e2328 !important;
+      }
+
       li select {
         max-width: 200px;
         border: 2px solid #5b5a56;
@@ -385,6 +449,31 @@
 
       li select:hover {
         border-color: #c89b3c;
+      }
+
+      .priority-badge {
+        display: inline-block;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .priority-Haute {
+        background-color: #ff6b6b;
+        color: white;
+      }
+
+      .priority-Normale {
+        background-color: #ffd93d;
+        color: #1e2328;
+      }
+
+      .priority-Basse {
+        background-color: #6bcf7f;
+        color: white;
       }
 
       li button:not(:last-child) {
