@@ -15,12 +15,13 @@
     </div>
 
     <div x-data="taskManager">
-      <input x-model="newTask" placeholder="texte" />
+      <input x-model="newTitle" placeholder="Titre" />
+      <textarea x-model="newDescription" placeholder="Description"></textarea>
 
       <select x-model="newCategory" x-ref="categorySelect">
         <option value="">+ Add category</option>
         <template x-for="category in $store.categories.newCategoryPossible">
-          <option :value="category" x-text="category" :selected="category === $store.categories.newCategoryPossible[0]"></option>
+          <option :value="category" x-text="category" :selected="category === newCategory"></option>
         </template>
       </select>
 
@@ -34,7 +35,7 @@
         </template>
       </select>
 
-      <button @click="addTask" :disabled="!newTask || !newCategory">Ajouter tache</button>
+      <button @click="addTask" :disabled="!newTitle || !newCategory">Ajouter tache</button>
 
       <template x-for="status in statuses">
         <div>
@@ -42,13 +43,30 @@
           <ul>
             <template x-for="(task, index) in tasks" :key="index">
               <li x-show="($store.categories.current === 'all' || task.category === $store.categories.current) && task.status === status">
-                <span x-text="task.text"></span>
+                <template x-if="editingIndex !== index">
+                  <div>
+                    <strong x-text="task.title"></strong>
+                    <p x-text="task.description"></p>
+                  </div>
+                </template>
+                <template x-if="editingIndex === index">
+                  <div>
+                    <input x-model="task.title" placeholder="Titre" />
+                    <textarea x-model="task.description" placeholder="Description"></textarea>
+                  </div>
+                </template>
                 (<span x-text="task.category"></span>)
                 <select x-model="task.status">
                   <template x-for="s in statuses">
                     <option :value="s" x-text="s" :selected="s === task.status"></option>
                   </template>
                 </select>
+                <template x-if="editingIndex !== index">
+                  <button @click="editingIndex = index">Modifier</button>
+                </template>
+                <template x-if="editingIndex === index">
+                  <button @click="editingIndex = null">Sauvegarder</button>
+                </template>
                 <button @click="removeTask(index)">X</button>
               </li>
             </template>
@@ -69,11 +87,13 @@
 
         Alpine.data("taskManager", () => ({
           tasks: Alpine.$persist([]),
-          newTask: "",
-          newCategory: Alpine.store("categories").newCategoryPossible.length > 0 ? Alpine.store("categories").newCategoryPossible[0] : "",
+          newTitle: "",
+          newDescription: "",
+          newCategory: "",
           newCategoryName: "",
           newStatus: "À faire",
           statuses: ["À faire", "En cours", "Terminé"],
+          editingIndex: null,
 
           init() {
             const store = Alpine.store("categories");
@@ -83,15 +103,19 @@
                 store.category.push(task.category);
               }
             });
+
+            this.newCategory = store.newCategoryPossible.length > 0 ? store.newCategoryPossible[0] : "";
           },
 
           addTask() {
             this.tasks.push({
-              text: this.newTask,
+              title: this.newTitle,
+              description: this.newDescription,
               category: this.newCategory,
               status: this.newStatus,
             });
-            this.newTask = "";
+            this.newTitle = "";
+            this.newDescription = "";
             this.newCategory = Alpine.store("categories").newCategoryPossible[0];
             this.newStatus = "À faire";
           },
