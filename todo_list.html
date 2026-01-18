@@ -34,7 +34,7 @@
         </template>
       </select>
 
-      <button @click="addTask" :disabled="!newTask || newCategory === ''">Ajouter tache</button>
+      <button @click="addTask" :disabled="!newTask || !newCategory">Ajouter tache</button>
 
       <template x-for="status in statuses">
         <div>
@@ -70,7 +70,7 @@
         Alpine.data("taskManager", () => ({
           tasks: Alpine.$persist([]),
           newTask: "",
-          newCategory: Alpine.store("categories").newCategoryPossible[0],
+          newCategory: Alpine.store("categories").newCategoryPossible.length > 0 ? Alpine.store("categories").newCategoryPossible[0] : "",
           newCategoryName: "",
           newStatus: "À faire",
           statuses: ["À faire", "En cours", "Terminé"],
